@@ -191,6 +191,38 @@ function updateFunctionComponent(fiber) {
   reconcileChildren(fiber, children)
 }
 
+function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &&
+    wipFiber.alternate.hooks &&
+    wipFiber.alternate.hooks[hookIndex]
+
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    queue: [],
+  }
+
+  const actions = oldHook ? oldHook.queue : []
+  actions.forEach((action) => {
+    hook.state = typeof action === "function" ? action(hook.state) : action
+  })
+
+  const setState = (action) => {
+    hook.queue.push(action)
+    wipRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    }
+    deletions = []
+    nextUnitOfWork = wipRoot
+  }
+
+  wipFiber.hooks.push(hook)
+  hookIndex++
+  return [hook.state, setState]
+}
+
 function reconcileChildren(wipFiber, elements) {
   let index = 0
   let oldFiber = wipFiber.alternate && wipFiber.alternate.child
@@ -245,24 +277,18 @@ function reconcileChildren(wipFiber, elements) {
   }
 }
 
-const Didact = { createElement, render }
+const Didact = { createElement, render, useState }
 const container = document.getElementById("root")
 
-function updateApp(title, description) {
-  const element = Didact.createElement(
-    "div",
-    { style: "background: lightblue; padding: 20px; border-radius: 8px;" },
-    Didact.createElement("h1", null, title),
-    Didact.createElement("p", null, description)
+function Greeting(props) {
+  return Didact.createElement(
+    "h1",
+    { style: "color: green;" },
+    "Mission 4: Hello, ",
+    props.name,
+    "!"
   )
-  Didact.render(element, container)
 }
 
-updateApp("Mission 3: Fiber Tree works!", "Wait 2 seconds for the update...")
-
-setTimeout(() => {
-  updateApp(
-    "Mission 3: Reconciliation works!",
-    "The DOM was updated without recreating the wrapper div."
-  )
-}, 2000)
+const App = Didact.createElement(Greeting, { name: "Function Components" })
+Didact.render(App, container)
